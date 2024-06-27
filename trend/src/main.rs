@@ -1,4 +1,4 @@
-use trend::{remote::RemoteRssTrendCollector, TrendCollector};
+use trend::{rss::RemoteRssTrendCollector, TrendCollector};
 
 #[tokio::main]
 async fn main() {

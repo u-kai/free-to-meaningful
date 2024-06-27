@@ -13,5 +13,6 @@
 - Summarize Trend
 - Collect Trend
   ~~- RSS~~
+  - X
 - Add Trend Source
 - Delete Trend Source
