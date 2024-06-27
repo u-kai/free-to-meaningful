@@ -102,10 +102,8 @@ mod tests {
 
     use super::*;
 
-    #[tokio::test]
-    async fn collect_trend_should_sorted_pub_date() {
-        // Example 1 is written bottom of the items, but this item earlier than others.
-        const DUMMY: &'static str = r#"
+    // Example 1 is written bottom of the items, but this item earlier than others.
+    const DUMMY: &'static str = r#"
 <?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0">
   <channel>
@@ -146,14 +144,22 @@ mod tests {
   </channel>
 </rss>
 "#;
+    #[tokio::test]
+    async fn collect_all_rss_item() {
         let collector = RssTrendCollector::new(DUMMY.as_bytes().to_vec());
         let infos = collector.collect().await.unwrap();
-        println!("{:?}", infos);
+
+        assert_eq!(infos.trends().len(), 3);
+    }
+    #[tokio::test]
+    async fn collect_rss_to_trend_should_sorted_by_pub_date() {
+        let collector = RssTrendCollector::new(DUMMY.as_bytes().to_vec());
+        let infos = collector.collect().await.unwrap();
 
         assert_eq!(infos.latest().unwrap().title(), "Example Item 1");
     }
     #[tokio::test]
-    async fn collect_rss_to_aws_trend() {
+    async fn collect_aws_rss_to_trend() {
         let mut reader =
             tokio::io::BufReader::new(tokio::fs::File::open("../tests/aws.rss").await.unwrap());
         let mut buf = Vec::new();
