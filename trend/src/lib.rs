@@ -1,3 +1,4 @@
+use date::Date;
 pub struct CollectedTrends {
     inner: Vec<TrendInfo>,
 }
@@ -24,10 +25,6 @@ pub struct TrendInfo {
     desc: String,
     created_at: Date,
 }
-
-#[derive(Debug)]
-// TODO: Implement Date
-pub struct Date;
 
 pub struct RssTrendCollector {
     bytes: Vec<u8>,
@@ -63,7 +60,9 @@ impl TryFrom<&rss::Item> for TrendInfo {
             title: value.title().unwrap_or_default().to_string(),
             link: value.link().unwrap_or_default().to_string(),
             desc: value.description().unwrap_or_default().to_string(),
-            created_at: Date,
+            created_at: value
+                .pub_date()
+                .map_or_else(Date::now, |v| Date::from_str(v).unwrap()),
         })
     }
 }
