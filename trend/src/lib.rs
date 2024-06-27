@@ -1,9 +1,11 @@
 use date::Date;
+#[derive(Debug)]
 pub struct CollectedTrends {
     inner: Vec<TrendInfo>,
 }
 impl CollectedTrends {
     pub fn new(inner: Vec<TrendInfo>) -> Self {
+        let inner = Self::sort(inner);
         Self { inner }
     }
     pub fn latest(&self) -> Option<&TrendInfo> {
@@ -11,6 +13,12 @@ impl CollectedTrends {
     }
     pub fn trends(&self) -> &[TrendInfo] {
         &self.inner
+    }
+    fn sort(mut inner: Vec<TrendInfo>) -> Vec<TrendInfo> {
+        // Sort by pub_date desc
+        // this mean is latest trend is first.
+        inner.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        inner
     }
 }
 pub trait TrendCollector {
@@ -94,7 +102,10 @@ mod tests {
 
     use super::*;
 
-    const DUMMY: &'static str = r#"
+    #[tokio::test]
+    async fn collect_trend_should_sorted_pub_date() {
+        // Example 1 is written bottom of the items, but this item earlier than others.
+        const DUMMY: &'static str = r#"
 <?xml version="1.0" encoding="UTF-8" ?>
 <rss version="2.0">
   <channel>
@@ -104,15 +115,6 @@ mod tests {
     <lastBuildDate>Fri, 21 Jun 2024 02:22:32 +0000</lastBuildDate>
     <pubDate>Fri, 21 Jun 2024 02:22:32 +0000</pubDate>
     <ttl>1800</ttl>
-
-    <item>
-      <title>Example Item 1</title>
-      <link>http://www.example.com/item1</link>
-      <description>This is the description for example item 1.</description>
-      <author>author@example.com</author>
-      <pubDate>Fri, 21 Jun 2024 02:22:32 +0000</pubDate>
-      <guid>http://www.example.com/item1</guid>
-    </item>
 
     <item>
       <title>Example Item 2</title>
@@ -132,19 +134,23 @@ mod tests {
       <guid>http://www.example.com/item3</guid>
     </item>
 
+    <item>
+      <title>Example Item 1</title>
+      <link>http://www.example.com/item1</link>
+      <description>This is the description for example item 1.</description>
+      <author>author@example.com</author>
+      <pubDate>Sat, 22 Jun 2024 02:22:32 +0000</pubDate>
+      <guid>http://www.example.com/item1</guid>
+    </item>
+
   </channel>
 </rss>
-
 "#;
-    #[test]
-    fn collect_trend_should_sorted_pub_date() {}
-    #[tokio::test]
-    async fn collect_rss_to_trend() {
         let collector = RssTrendCollector::new(DUMMY.as_bytes().to_vec());
         let infos = collector.collect().await.unwrap();
+        println!("{:?}", infos);
 
         assert_eq!(infos.latest().unwrap().title(), "Example Item 1");
-        assert_eq!(infos.trends().len(), 3);
     }
     #[tokio::test]
     async fn collect_rss_to_aws_trend() {

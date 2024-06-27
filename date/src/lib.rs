@@ -30,7 +30,15 @@ pub enum DateError {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
+    #[test]
+    fn cmp() {
+        let format = "%a, %d %b %Y %H:%M:%S %z";
+        let date1 = Date::parse_from_str("Fri, 21 Jun 2024 02:22:32 +0000", format).unwrap();
+        let date2 = Date::parse_from_str("Sat, 22 Jun 2024 02:22:32 +0000", format).unwrap();
+        assert!(date1 < date2);
+    }
     #[test]
     fn to_string() {
         let s = "2021-01-01:00:00:00";
