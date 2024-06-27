@@ -28,17 +28,12 @@ pub struct TrendInfo {
     created_at: Date,
 }
 
-pub trait ItemConvertor {
-    fn convert(&self, item: &rss::Item) -> Result<TrendInfo, TrendInfoError>;
-}
-
-pub struct RssTrendCollector<T: ItemConvertor> {
+pub struct RssTrendCollector {
     bytes: Vec<u8>,
-    convertor: T,
 }
-impl<T: ItemConvertor> RssTrendCollector<T> {
-    pub fn new(convertor: T, bytes: Vec<u8>) -> Self {
-        Self { convertor, bytes }
+impl RssTrendCollector {
+    pub fn new(bytes: Vec<u8>) -> Self {
+        Self { bytes }
     }
     async fn to_channel(&self) -> Result<rss::Channel, RssTrendCollectorError> {
         rss::Channel::read_from(&self.bytes[..]).map_err(|e| RssTrendCollectorError::RssError(e))
@@ -47,41 +42,33 @@ impl<T: ItemConvertor> RssTrendCollector<T> {
 pub enum RssTrendCollectorError {
     RssError(rss::Error),
 }
-impl<T: ItemConvertor> TrendCollector for RssTrendCollector<T> {
+impl TrendCollector for RssTrendCollector {
     async fn collect(&self) -> Result<CollectedTrends, TrendCollectorError> {
         let channel = self.to_channel().await.map_err(|_| TrendCollectorError)?;
         Ok(CollectedTrends::new(
             channel
                 .items()
                 .iter()
-                .filter_map(|item| self.convertor.convert(item).ok())
+                .filter_map(|item| item_to_trend(item).ok())
                 .collect(),
         ))
     }
 }
 
-pub struct AwsUpdateItemConvertor;
-impl AwsUpdateItemConvertor {
+fn item_to_trend(item: &rss::Item) -> Result<TrendInfo, TrendInfoError> {
     const DATE_FORMAT: &'static str = "%a, %d %b %Y %H:%M:%S %z";
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-impl ItemConvertor for AwsUpdateItemConvertor {
-    fn convert(&self, item: &rss::Item) -> Result<TrendInfo, TrendInfoError> {
-        let title = item.title().unwrap_or_default().to_string();
-        let link = item.link().unwrap_or_default().to_string();
-        let desc = item.description().unwrap_or_default().to_string();
-        let pub_date = item.pub_date().unwrap_or_default();
-        let created_at = Date::parse_from_str(pub_date, Self::DATE_FORMAT)
-            .map_err(|_| TrendInfoError::InvalidDate(pub_date.to_string()))?;
-        Ok(TrendInfo {
-            title,
-            link,
-            desc,
-            created_at,
-        })
-    }
+    let title = item.title().unwrap_or_default().to_string();
+    let link = item.link().unwrap_or_default().to_string();
+    let desc = item.description().unwrap_or_default().to_string();
+    let pub_date = item.pub_date().unwrap_or_default();
+    let created_at = Date::parse_from_str(pub_date, DATE_FORMAT)
+        .map_err(|_| TrendInfoError::InvalidDate(pub_date.to_string()))?;
+    Ok(TrendInfo {
+        title,
+        link,
+        desc,
+        created_at,
+    })
 }
 
 #[cfg(test)]
@@ -90,15 +77,18 @@ mod tests {
 
     use super::*;
 
+    #[test]
+    fn collect_trend_should_sorted_pub_date() {}
+    #[test]
+    fn collect_rss_to_trend() {}
     #[tokio::test]
-    async fn collect_rss_to_trend() {
+    async fn collect_rss_to_aws_trend() {
         let mut reader =
             tokio::io::BufReader::new(tokio::fs::File::open("../tests/aws.rss").await.unwrap());
         let mut buf = Vec::new();
         reader.read_to_end(&mut buf).await.unwrap();
-        let aws_convertor = AwsUpdateItemConvertor::new();
 
-        let collector = RssTrendCollector::new(aws_convertor, buf);
+        let collector = RssTrendCollector::new(buf);
         let infos = collector.collect().await.unwrap();
 
         assert_eq!(infos.latest().unwrap().title, "hogehoge")
