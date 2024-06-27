@@ -12,5 +12,6 @@
 - Update Trend Status
 - Summarize Trend
 - Collect Trend
+  ~~- RSS~~
 - Add Trend Source
 - Delete Trend Source

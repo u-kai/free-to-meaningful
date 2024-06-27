@@ -1,4 +1,5 @@
 use date::Date;
+pub mod remote;
 #[derive(Debug)]
 pub struct CollectedTrends {
     inner: Vec<TrendInfo>,
@@ -22,11 +23,10 @@ impl CollectedTrends {
     }
 }
 pub trait TrendCollector {
+    type Error: std::error::Error;
     #[allow(async_fn_in_trait)]
-    async fn collect(&self) -> Result<CollectedTrends, TrendCollectorError>;
+    async fn collect(&self) -> Result<CollectedTrends, Self::Error>;
 }
-#[derive(Debug)]
-pub struct TrendCollectorError;
 
 pub enum TrendInfoError {
     InvalidDate(String),
@@ -53,23 +53,35 @@ impl TrendInfo {
     }
 }
 
-pub struct RssTrendCollector {
-    bytes: Vec<u8>,
+pub struct RssTrendCollector<B: AsRef<[u8]>> {
+    bytes: B,
 }
-impl RssTrendCollector {
-    pub fn new(bytes: Vec<u8>) -> Self {
+impl<B: AsRef<[u8]>> RssTrendCollector<B> {
+    pub fn new(bytes: B) -> Self {
         Self { bytes }
     }
     async fn to_channel(&self) -> Result<rss::Channel, RssTrendCollectorError> {
-        rss::Channel::read_from(&self.bytes[..]).map_err(|e| RssTrendCollectorError::RssError(e))
+        let bytes = self.bytes.as_ref();
+        rss::Channel::read_from(bytes).map_err(|e| RssTrendCollectorError::RssError(e))
     }
 }
+#[derive(Debug)]
 pub enum RssTrendCollectorError {
     RssError(rss::Error),
 }
-impl TrendCollector for RssTrendCollector {
-    async fn collect(&self) -> Result<CollectedTrends, TrendCollectorError> {
-        let channel = self.to_channel().await.map_err(|_| TrendCollectorError)?;
+impl std::fmt::Display for RssTrendCollectorError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RssTrendCollectorError::RssError(e) => write!(f, "RssError: {:?}", e),
+        }
+    }
+}
+impl std::error::Error for RssTrendCollectorError {}
+
+impl<B: AsRef<[u8]>> TrendCollector for RssTrendCollector<B> {
+    type Error = RssTrendCollectorError;
+    async fn collect(&self) -> Result<CollectedTrends, RssTrendCollectorError> {
+        let channel = self.to_channel().await?;
         Ok(CollectedTrends::new(
             channel
                 .items()
