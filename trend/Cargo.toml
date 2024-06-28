@@ -11,3 +11,6 @@ tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.12.5" }
 date = {path="../date"}
 user = {path="../user"}
+axum = { version = "0.7.5"  }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

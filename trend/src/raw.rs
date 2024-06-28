@@ -92,3 +92,31 @@ impl RawTrendInfo {
 pub enum RawTrendInfoError {
     InvalidDate(String),
 }
+
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct Trend {
+    title: String,
+    link: String,
+    from: String,
+    desc: String,
+}
+impl From<CollectedRawTrends> for Vec<Trend> {
+    fn from(value: CollectedRawTrends) -> Self {
+        value
+            .trends()
+            .iter()
+            .map(|info| Trend::from(info.clone()))
+            .collect()
+    }
+}
+impl From<RawTrendInfo> for Trend {
+    fn from(info: RawTrendInfo) -> Self {
+        let from = info.from().to_string();
+        Self {
+            title: info.title,
+            link: info.link,
+            from,
+            desc: info.desc,
+        }
+    }
+}
