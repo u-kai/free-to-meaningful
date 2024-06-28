@@ -1273,6 +1273,7 @@ dependencies = [
  "reqwest",
  "rss",
  "tokio",
+ "user",
 ]
 
 [[package]]
@@ -1318,6 +1319,10 @@ dependencies = [
  "idna",
  "percent-encoding",
 ]
+
+[[package]]
+name = "user"
+version = "0.1.0"
 
 [[package]]
 name = "vcpkg"

@@ -2,4 +2,4 @@
 members = [
     "date",
     "trend"
-]
+, "user"]

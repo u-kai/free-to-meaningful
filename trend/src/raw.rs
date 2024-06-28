@@ -43,13 +43,18 @@ impl Service {
         &self.0
     }
 }
+impl From<String> for Service {
+    fn from(s: String) -> Self {
+        Self(s)
+    }
+}
 #[derive(Debug, Clone)]
 pub struct RawTrendInfo {
-    title: String,
-    link: String,
-    desc: String,
-    from: Service,
-    created_at: Date,
+    pub(super) title: String,
+    pub(super) link: String,
+    pub(super) desc: String,
+    pub(super) from: Service,
+    pub(super) created_at: Date,
 }
 impl RawTrendInfo {
     pub fn new(

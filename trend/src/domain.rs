@@ -1,4 +1,7 @@
+use date::Date;
+
 use crate::raw::RawTrendInfo;
+use std::fmt::Display;
 
 #[derive(Debug, Clone)]
 pub struct UserTrendInfo {
@@ -16,8 +19,26 @@ impl UserTrendInfo {
             status: Status::New,
         }
     }
+    pub fn id(&self) -> &UserTrendInfoId {
+        &self.id
+    }
+    pub fn raw_info(&self) -> &RawTrendInfo {
+        &self.raw_info
+    }
     pub fn memo(&self) -> &str {
         &self.memo.0
+    }
+    pub fn title(&self) -> &str {
+        self.raw_info.title()
+    }
+    pub fn link(&self) -> &str {
+        self.raw_info.link()
+    }
+    pub fn from(&self) -> &str {
+        self.raw_info.from()
+    }
+    pub fn created_at(&self) -> &Date {
+        self.raw_info.created_at()
     }
     pub fn change_status(&mut self, new_status: Status) -> Result<(), UserTrendInfoError> {
         self.status = self
@@ -39,12 +60,23 @@ impl UserTrendInfo {
 
 #[derive(Debug)]
 pub enum UserTrendInfoError {
+    #[allow(private_interfaces)]
     InvalidMemo(MemoError),
+    #[allow(private_interfaces)]
     InvalidStatus(StatusError),
 }
+impl Display for UserTrendInfoError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserTrendInfoError::InvalidMemo(e) => write!(f, "InvalidMemo: {}", e.to_string()),
+            UserTrendInfoError::InvalidStatus(e) => write!(f, "InvalidStatus: {}", e.to_string()),
+        }
+    }
+}
+impl std::error::Error for UserTrendInfoError {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct UserTrendInfoId(String);
+pub struct UserTrendInfoId(pub(super) String);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Memo(String);
@@ -66,6 +98,14 @@ impl Memo {
 enum MemoError {
     TooLong(usize),
 }
+impl Display for MemoError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            MemoError::TooLong(len) => write!(f, "too long: {}", len),
+        }
+    }
+}
+impl std::error::Error for MemoError {}
 
 #[derive(Debug, Clone, PartialEq, Eq, Copy)]
 pub enum Status {
@@ -75,6 +115,15 @@ pub enum Status {
     Done,
 }
 impl Status {
+    pub fn from_str(s: &str) -> Result<Self, StatusError> {
+        match s {
+            "New" => Ok(Status::New),
+            "Reading" => Ok(Status::Reading),
+            "ToDo" => Ok(Status::ToDo),
+            "Done" => Ok(Status::Done),
+            _ => Err(StatusError::InvalidStatus(s.to_string())),
+        }
+    }
     fn change_status(self, to: Self) -> Result<Self, StatusError> {
         match (self, to) {
             (old, new) if old == new => Ok(old),
@@ -85,11 +134,37 @@ impl Status {
             _ => Ok(to),
         }
     }
+    pub fn to_str(&self) -> &str {
+        match self {
+            Status::New => "New",
+            Status::Reading => "Reading",
+            Status::ToDo => "ToDo",
+            Status::Done => "Done",
+        }
+    }
 }
 #[derive(Debug)]
-enum StatusError {
+pub enum StatusError {
     InvalidStatusChange(Status, Status),
+    InvalidStatus(String),
 }
+impl Display for StatusError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StatusError::InvalidStatusChange(from, to) => {
+                write!(
+                    f,
+                    "InvalidStatusChange: {} -> {}",
+                    from.to_str(),
+                    to.to_str()
+                )
+            }
+            StatusError::InvalidStatus(s) => write!(f, "InvalidStatus: {}", s),
+        }
+    }
+}
+
+impl std::error::Error for StatusError {}
 
 #[cfg(test)]
 mod tests {

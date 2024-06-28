@@ -1,18 +1,11 @@
 pub mod domain;
 pub mod raw;
 pub mod repository;
-
-//pub struct TrendService<R: UserTrendInfoRepository> {
-//    repository: R,
-//}
+pub mod use_case;
 
 #[cfg(test)]
 mod tests {
-    use crate::raw::{RawTrendInfo, Service};
-    //use crate::repository::Status;
-    use date::Date;
 
-    use super::*;
     //#[tokio::test]
     //async fn user_can_save_new_trend_with_other_info() {
     //    let user_id = UserId::new("user_id");
