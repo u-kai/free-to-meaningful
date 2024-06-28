@@ -2,38 +2,38 @@ use std::fmt::Display;
 
 use date::Date;
 
-use crate::{CollectedTrends, TrendCollector, TrendInfo, TrendInfoError};
+use super::{CollectedRawTrends, RawTrendCollector, RawTrendInfo, RawTrendInfoError};
 
-pub struct RssTrendCollector<B: AsRef<[u8]>> {
+pub struct RssRawTrendCollector<B: AsRef<[u8]>> {
     bytes: B,
 }
-impl<B: AsRef<[u8]>> RssTrendCollector<B> {
+impl<B: AsRef<[u8]>> RssRawTrendCollector<B> {
     pub fn new(bytes: B) -> Self {
         Self { bytes }
     }
-    async fn to_channel(&self) -> Result<rss::Channel, RssTrendCollectorError> {
+    async fn to_channel(&self) -> Result<rss::Channel, RssRawTrendCollectorError> {
         let bytes = self.bytes.as_ref();
-        rss::Channel::read_from(bytes).map_err(|e| RssTrendCollectorError::RssError(e))
+        rss::Channel::read_from(bytes).map_err(|e| RssRawTrendCollectorError::RssError(e))
     }
 }
 #[derive(Debug)]
-pub enum RssTrendCollectorError {
+pub enum RssRawTrendCollectorError {
     RssError(rss::Error),
 }
-impl std::fmt::Display for RssTrendCollectorError {
+impl std::fmt::Display for RssRawTrendCollectorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RssTrendCollectorError::RssError(e) => write!(f, "RssError: {:?}", e),
+            RssRawTrendCollectorError::RssError(e) => write!(f, "RssError: {:?}", e),
         }
     }
 }
-impl std::error::Error for RssTrendCollectorError {}
+impl std::error::Error for RssRawTrendCollectorError {}
 
-impl<B: AsRef<[u8]>> TrendCollector for RssTrendCollector<B> {
-    type Error = RssTrendCollectorError;
-    async fn collect(&self) -> Result<CollectedTrends, RssTrendCollectorError> {
+impl<B: AsRef<[u8]>> RawTrendCollector for RssRawTrendCollector<B> {
+    type Error = RssRawTrendCollectorError;
+    async fn collect(&self) -> Result<CollectedRawTrends, RssRawTrendCollectorError> {
         let channel = self.to_channel().await?;
-        Ok(CollectedTrends::new(
+        Ok(CollectedRawTrends::new(
             channel
                 .items()
                 .iter()
@@ -43,15 +43,15 @@ impl<B: AsRef<[u8]>> TrendCollector for RssTrendCollector<B> {
     }
 }
 
-fn item_to_trend(item: &rss::Item) -> Result<TrendInfo, TrendInfoError> {
+fn item_to_trend(item: &rss::Item) -> Result<RawTrendInfo, RawTrendInfoError> {
     const DATE_FORMAT: &'static str = "%a, %d %b %Y %H:%M:%S %z";
     let title = item.title().unwrap_or_default().to_string();
     let link = item.link().unwrap_or_default().to_string();
     let desc = item.description().unwrap_or_default().to_string();
     let pub_date = item.pub_date().unwrap_or_default();
     let created_at = Date::parse_from_str(pub_date, DATE_FORMAT)
-        .map_err(|_| TrendInfoError::InvalidDate(pub_date.to_string()))?;
-    Ok(TrendInfo {
+        .map_err(|_| RawTrendInfoError::InvalidDate(pub_date.to_string()))?;
+    Ok(RawTrendInfo {
         title,
         link,
         desc,
@@ -59,10 +59,10 @@ fn item_to_trend(item: &rss::Item) -> Result<TrendInfo, TrendInfoError> {
     })
 }
 
-pub struct RemoteRssTrendCollector {
+pub struct RemoteRssRawTrendCollector {
     url: &'static str,
 }
-impl RemoteRssTrendCollector {
+impl RemoteRssRawTrendCollector {
     pub fn new(url: &'static str) -> Self {
         Self { url }
     }
@@ -72,34 +72,34 @@ impl RemoteRssTrendCollector {
 }
 
 #[derive(Debug)]
-pub enum RemoteRssTrendCollectorError {
+pub enum RemoteRssRawTrendCollectorError {
     RequestError(reqwest::Error),
-    RssError(RssTrendCollectorError),
+    RssError(RssRawTrendCollectorError),
 }
-impl Display for RemoteRssTrendCollectorError {
+impl Display for RemoteRssRawTrendCollectorError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RemoteRssTrendCollectorError::RequestError(e) => write!(f, "RequestError: {:?}", e),
-            RemoteRssTrendCollectorError::RssError(e) => write!(f, "RssError: {:?}", e),
+            RemoteRssRawTrendCollectorError::RequestError(e) => write!(f, "RequestError: {:?}", e),
+            RemoteRssRawTrendCollectorError::RssError(e) => write!(f, "RssError: {:?}", e),
         }
     }
 }
-impl std::error::Error for RemoteRssTrendCollectorError {}
+impl std::error::Error for RemoteRssRawTrendCollectorError {}
 
-impl TrendCollector for RemoteRssTrendCollector {
-    type Error = RemoteRssTrendCollectorError;
-    async fn collect(&self) -> Result<CollectedTrends, Self::Error> {
+impl RawTrendCollector for RemoteRssRawTrendCollector {
+    type Error = RemoteRssRawTrendCollectorError;
+    async fn collect(&self) -> Result<CollectedRawTrends, Self::Error> {
         let bytes = reqwest::get(self.url)
             .await
-            .map_err(|e| RemoteRssTrendCollectorError::RequestError(e))?
+            .map_err(|e| RemoteRssRawTrendCollectorError::RequestError(e))?
             .bytes()
             .await
-            .map_err(|e| RemoteRssTrendCollectorError::RequestError(e))?;
-        let collector = RssTrendCollector::new(bytes);
+            .map_err(|e| RemoteRssRawTrendCollectorError::RequestError(e))?;
+        let collector = RssRawTrendCollector::new(bytes);
         collector
             .collect()
             .await
-            .map_err(|e| RemoteRssTrendCollectorError::RssError(e))
+            .map_err(|e| RemoteRssRawTrendCollectorError::RssError(e))
     }
 }
 
@@ -153,14 +153,14 @@ mod tests {
 "#;
     #[tokio::test]
     async fn collect_all_rss_item() {
-        let collector = RssTrendCollector::new(DUMMY.as_bytes().to_vec());
+        let collector = RssRawTrendCollector::new(DUMMY.as_bytes().to_vec());
         let infos = collector.collect().await.unwrap();
 
         assert_eq!(infos.trends().len(), 3);
     }
     #[tokio::test]
     async fn collect_rss_to_trend_should_sorted_by_pub_date() {
-        let collector = RssTrendCollector::new(DUMMY.as_bytes().to_vec());
+        let collector = RssRawTrendCollector::new(DUMMY.as_bytes().to_vec());
         let infos = collector.collect().await.unwrap();
 
         assert_eq!(infos.latest().unwrap().title(), "Example Item 1");
@@ -172,7 +172,7 @@ mod tests {
         let mut buf = Vec::new();
         reader.read_to_end(&mut buf).await.unwrap();
 
-        let collector = RssTrendCollector::new(buf);
+        let collector = RssRawTrendCollector::new(buf);
         let infos = collector.collect().await.unwrap();
 
         assert_eq!(infos.latest().unwrap().title, "hogehoge")

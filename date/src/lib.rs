@@ -1,3 +1,4 @@
+pub const FAKE_NOW: &str = "2024-10-12:00:00:00";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Date {
     inner: chrono::NaiveDate,
@@ -5,9 +6,17 @@ pub struct Date {
 
 impl Date {
     const DEFAULT_FORMAT: &'static str = "%Y-%m-%d:00:00:00";
+    #[cfg(not(test))]
     pub fn now() -> Self {
         Self {
             inner: chrono::Local::now().naive_local().date(),
+        }
+    }
+    #[cfg(test)]
+    pub fn now() -> Self {
+        Self {
+            inner: chrono::NaiveDate::parse_from_str(FAKE_NOW, "%Y-%m-%d:00:00:00")
+                .expect("FAKE_NOW is invalid"),
         }
     }
     pub fn from_str<T: AsRef<str>>(value: T) -> Result<Self, DateError> {
