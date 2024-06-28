@@ -9,6 +9,7 @@
 - Update Todo
 
 - List Trend
+  ~~- Save Trend~~
 - Update Trend Status
 - Summarize Trend
 - Collect Trend

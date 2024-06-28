@@ -116,6 +116,31 @@ pub mod fake {
         }
     }
     impl UserTrendInfoRepository for FakeUserTrendInfoRepository {
+        async fn update(
+            &self,
+            user_trend: UserTrendInfo,
+        ) -> Result<UserTrendInfo, UserTrendInfoRepositoryError> {
+            let mut infos = self.infos.borrow_mut();
+            let entity = infos.iter_mut().find(|i| i.id == user_trend.id().0).ok_or(
+                UserTrendInfoRepositoryError::NotFoundError("not found".to_string()),
+            )?;
+            entity.memo = user_trend.memo().to_string();
+            entity.status = user_trend.status().to_str().to_string();
+            entity.updated_at = Date::now().to_string();
+            Ok(user_trend)
+        }
+        async fn list(
+            &self,
+            user_id: user::UserId,
+        ) -> Result<Vec<UserTrendInfo>, UserTrendInfoRepositoryError> {
+            let infos = self.infos.borrow();
+            let result: Result<Vec<UserTrendInfo>, TrendInfoEntityError> = infos
+                .iter()
+                .filter(|i| i.user_id == user_id.to_string())
+                .map(|i| i.clone().try_into())
+                .collect();
+            Ok(result.map_err(|e| UserTrendInfoRepositoryError::ConvertError(e.to_string()))?)
+        }
         async fn save(
             &self,
             user_trend: SaveNewTrendInfo,
