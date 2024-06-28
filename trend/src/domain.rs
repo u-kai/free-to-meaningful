@@ -19,6 +19,17 @@ impl UserTrendInfo {
     pub fn memo(&self) -> &str {
         &self.memo.0
     }
+    pub fn change_status(&mut self, new_status: Status) -> Result<(), UserTrendInfoError> {
+        self.status = self
+            .status
+            .change_status(new_status)
+            .map(|s| s)
+            .map_err(|e| UserTrendInfoError::InvalidStatus(e))?;
+        Ok(())
+    }
+    pub fn status(&self) -> Status {
+        self.status
+    }
     pub fn change_memo(&mut self, new_memo: String) -> Result<(), UserTrendInfoError> {
         self.memo
             .change_memo(new_memo)
@@ -29,6 +40,7 @@ impl UserTrendInfo {
 #[derive(Debug)]
 pub enum UserTrendInfoError {
     InvalidMemo(MemoError),
+    InvalidStatus(StatusError),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,7 +86,8 @@ impl Status {
         }
     }
 }
-pub enum StatusError {
+#[derive(Debug)]
+enum StatusError {
     InvalidStatusChange(Status, Status),
 }
 
@@ -83,7 +96,7 @@ mod tests {
     use date::Date;
 
     use crate::{
-        domain::{UserTrendInfo, UserTrendInfoId},
+        domain::{Status, UserTrendInfo, UserTrendInfoId},
         raw::{RawTrendInfo, Service},
     };
 
@@ -94,7 +107,9 @@ mod tests {
             RawTrendInfo::new("title", "link", "desc", Service::aws_updates(), Date::now());
         let mut info = UserTrendInfo::new(id, raw_info);
         let new_memo = "new memo";
+
         info.change_memo(new_memo.to_string()).unwrap();
+
         assert_eq!(info.memo(), new_memo);
     }
     #[test]
@@ -104,7 +119,21 @@ mod tests {
             RawTrendInfo::new("title", "link", "desc", Service::aws_updates(), Date::now());
         let mut info = UserTrendInfo::new(id, raw_info);
         let new_big_memo = "a".repeat(10000);
+
         let result = info.change_memo(new_big_memo);
+
         assert!(result.is_err());
+    }
+    #[test]
+    fn user_trend_info_can_change_status() {
+        let id = UserTrendInfoId("id".to_string());
+        let raw_info =
+            RawTrendInfo::new("title", "link", "desc", Service::aws_updates(), Date::now());
+        let mut info = UserTrendInfo::new(id, raw_info);
+        let new_status = Status::Reading;
+
+        info.change_status(new_status).unwrap();
+
+        assert_eq!(info.status, new_status);
     }
 }
