@@ -2,14 +2,15 @@ use std::fmt::Display;
 
 use date::Date;
 
-use super::{CollectedRawTrends, RawTrendCollector, RawTrendInfo, RawTrendInfoError};
+use super::{CollectedRawTrends, RawTrendCollector, RawTrendInfo, RawTrendInfoError, Service};
 
 pub struct RssRawTrendCollector<B: AsRef<[u8]>> {
+    service: Service,
     bytes: B,
 }
 impl<B: AsRef<[u8]>> RssRawTrendCollector<B> {
-    pub fn new(bytes: B) -> Self {
-        Self { bytes }
+    pub fn new(service: Service, bytes: B) -> Self {
+        Self { service, bytes }
     }
     async fn to_channel(&self) -> Result<rss::Channel, RssRawTrendCollectorError> {
         let bytes = self.bytes.as_ref();
@@ -37,13 +38,13 @@ impl<B: AsRef<[u8]>> RawTrendCollector for RssRawTrendCollector<B> {
             channel
                 .items()
                 .iter()
-                .filter_map(|item| item_to_trend(item).ok())
+                .filter_map(|item| item_to_trend(item, self.service.clone()).ok())
                 .collect(),
         ))
     }
 }
 
-fn item_to_trend(item: &rss::Item) -> Result<RawTrendInfo, RawTrendInfoError> {
+fn item_to_trend(item: &rss::Item, from: Service) -> Result<RawTrendInfo, RawTrendInfoError> {
     const DATE_FORMAT: &'static str = "%a, %d %b %Y %H:%M:%S %z";
     let title = item.title().unwrap_or_default().to_string();
     let link = item.link().unwrap_or_default().to_string();
@@ -51,23 +52,22 @@ fn item_to_trend(item: &rss::Item) -> Result<RawTrendInfo, RawTrendInfoError> {
     let pub_date = item.pub_date().unwrap_or_default();
     let created_at = Date::parse_from_str(pub_date, DATE_FORMAT)
         .map_err(|_| RawTrendInfoError::InvalidDate(pub_date.to_string()))?;
-    Ok(RawTrendInfo {
-        title,
-        link,
-        desc,
-        created_at,
-    })
+    Ok(RawTrendInfo::new(title, link, desc, from, created_at))
 }
 
 pub struct RemoteRssRawTrendCollector {
     url: &'static str,
+    service: Service,
 }
 impl RemoteRssRawTrendCollector {
-    pub fn new(url: &'static str) -> Self {
-        Self { url }
+    pub fn new(url: &'static str, service: Service) -> Self {
+        Self { url, service }
     }
     pub fn aws_updates() -> Self {
-        Self::new("https://aws.amazon.com/jp/about-aws/whats-new/recent/feed/")
+        Self::new(
+            "https://aws.amazon.com/jp/about-aws/whats-new/recent/feed/",
+            Service::aws_updates(),
+        )
     }
 }
 
@@ -95,7 +95,7 @@ impl RawTrendCollector for RemoteRssRawTrendCollector {
             .bytes()
             .await
             .map_err(|e| RemoteRssRawTrendCollectorError::RequestError(e))?;
-        let collector = RssRawTrendCollector::new(bytes);
+        let collector = RssRawTrendCollector::new(self.service.clone(), bytes);
         collector
             .collect()
             .await
@@ -153,17 +153,30 @@ mod tests {
 "#;
     #[tokio::test]
     async fn collect_all_rss_item() {
-        let collector = RssRawTrendCollector::new(DUMMY.as_bytes().to_vec());
+        let collector =
+            RssRawTrendCollector::new(Service::aws_updates(), DUMMY.as_bytes().to_vec());
         let infos = collector.collect().await.unwrap();
 
         assert_eq!(infos.trends().len(), 3);
     }
     #[tokio::test]
     async fn collect_rss_to_trend_should_sorted_by_pub_date() {
-        let collector = RssRawTrendCollector::new(DUMMY.as_bytes().to_vec());
+        let collector =
+            RssRawTrendCollector::new(Service::aws_updates(), DUMMY.as_bytes().to_vec());
         let infos = collector.collect().await.unwrap();
 
         assert_eq!(infos.latest().unwrap().title(), "Example Item 1");
+    }
+    #[tokio::test]
+    async fn collect_rss_to_trend_has_from_field() {
+        let collector =
+            RssRawTrendCollector::new(Service::aws_updates(), DUMMY.as_bytes().to_vec());
+        let infos = collector.collect().await.unwrap();
+
+        assert_eq!(
+            infos.latest().unwrap().from(),
+            Service::aws_updates().to_str()
+        );
     }
     #[tokio::test]
     async fn collect_aws_rss_to_trend() {
@@ -172,7 +185,7 @@ mod tests {
         let mut buf = Vec::new();
         reader.read_to_end(&mut buf).await.unwrap();
 
-        let collector = RssRawTrendCollector::new(buf);
+        let collector = RssRawTrendCollector::new(Service::aws_updates(), buf);
         let infos = collector.collect().await.unwrap();
 
         assert_eq!(infos.latest().unwrap().title, "hogehoge")

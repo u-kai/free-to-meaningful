@@ -31,10 +31,24 @@ impl CollectedRawTrends {
 }
 
 #[derive(Debug, Clone)]
+pub struct Service(String);
+impl Service {
+    pub fn aws_updates() -> Self {
+        Self("aws_updates".to_string())
+    }
+    pub fn x() -> Self {
+        Self("x".to_string())
+    }
+    pub fn to_str(&self) -> &str {
+        &self.0
+    }
+}
+#[derive(Debug, Clone)]
 pub struct RawTrendInfo {
     title: String,
     link: String,
     desc: String,
+    from: Service,
     created_at: Date,
 }
 impl RawTrendInfo {
@@ -42,12 +56,14 @@ impl RawTrendInfo {
         title: impl Into<String>,
         link: impl Into<String>,
         desc: impl Into<String>,
+        from: Service,
         created_at: Date,
     ) -> Self {
         Self {
             title: title.into(),
             link: link.into(),
             desc: desc.into(),
+            from,
             created_at,
         }
     }
@@ -62,6 +78,9 @@ impl RawTrendInfo {
     }
     pub fn created_at(&self) -> &Date {
         &self.created_at
+    }
+    pub fn from(&self) -> &str {
+        &self.from.to_str()
     }
 }
 
