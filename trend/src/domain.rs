@@ -97,4 +97,14 @@ mod tests {
         info.change_memo(new_memo.to_string()).unwrap();
         assert_eq!(info.memo(), new_memo);
     }
+    #[test]
+    fn user_trend_info_can_not_change_big_memo() {
+        let id = UserTrendInfoId("id".to_string());
+        let raw_info =
+            RawTrendInfo::new("title", "link", "desc", Service::aws_updates(), Date::now());
+        let mut info = UserTrendInfo::new(id, raw_info);
+        let new_big_memo = "a".repeat(10000);
+        let result = info.change_memo(new_big_memo);
+        assert!(result.is_err());
+    }
 }
