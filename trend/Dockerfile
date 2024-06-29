@@ -1,20 +1,13 @@
-FROM rust:latest AS builder
+FROM ekidd/rust-musl-builder AS builder
 
-WORKDIR /usr/src/app
-
-COPY . .
-
+ADD --chown=rust:rust . ./
 RUN cargo build --release --bin trend
 
-# Use a minimal image for the final stage
-FROM debian:bookworm-slim
+FROM alpine:3.14.3 AS deploy
+RUN apk --no-cache add ca-certificates
+WORKDIR /app
+COPY --from=builder \
+    /home/rust/src/target/x86_64-unknown-linux-musl/release/trend \
+    ./main
 
-WORKDIR /usr/src/app
-
-RUN apt-get update && apt-get install -y libssl3 openssl ca-certificates && rm -rf /var/lib/apt/lists/*
-
-# Copy the compiled binary from the build stage
-COPY --from=builder /usr/src/app/target/release/trend /usr/src/app/trend
-
-# Set the entrypoint to the compiled binary
-ENTRYPOINT ["./trend"]
+CMD ["/app/main"]
