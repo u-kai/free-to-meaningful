@@ -1,6 +1,7 @@
 FROM ekidd/rust-musl-builder AS builder
 
 ADD --chown=rust:rust . ./
+RUN rm Cargo.lock && cargo update
 RUN cargo build --release --bin trend
 
 FROM alpine:3.14.3 AS deploy
