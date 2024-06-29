@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  trend:
+    image: u-kai/trend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgres://postgres:password@db:5432/trend
+
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: trend
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql

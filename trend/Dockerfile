@@ -1,20 +1,20 @@
-# ベースイメージとしてRustの公式イメージを使用
-FROM rust:latest
+FROM rust:latest AS builder
 
-# ワーキングディレクトリを作成
 WORKDIR /usr/src/app
 
-# Cargo.tomlとCargo.lockをコピー
-COPY Cargo.toml Cargo.lock ./
-
-# 依存関係をダウンロード
-RUN cargo build --release
-
-# ソースコードをコピー
 COPY . .
 
-# アプリケーションをビルド
-RUN cargo build --release
+RUN cargo build --release --bin trend
 
-# 実行可能ファイルを実行
-CMD ["./target/release/trend"]
+# Use a minimal image for the final stage
+FROM debian:bookworm-slim
+
+WORKDIR /usr/src/app
+
+RUN apt-get update && apt-get install -y libssl3 openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Copy the compiled binary from the build stage
+COPY --from=builder /usr/src/app/target/release/trend /usr/src/app/trend
+
+# Set the entrypoint to the compiled binary
+ENTRYPOINT ["./trend"]
