@@ -1,5 +1,5 @@
 [workspace]
 members = [
-    "date",
+    "date", "todo",
     "trend"
 , "user"]
