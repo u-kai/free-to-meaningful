@@ -1,14 +1,22 @@
-FROM ekidd/rust-musl-builder AS builder
+FROM rust:alpine AS builder
 
-ADD --chown=rust:rust . ./
-RUN rm Cargo.lock && cargo update
-RUN cargo build --release --bin trend
+RUN apk add --no-cache musl-dev pkgconfig openssl-dev
 
-FROM alpine:3.14.3 AS deploy
-RUN apk --no-cache add ca-certificates
-WORKDIR /app
-COPY --from=builder \
-    /home/rust/src/target/x86_64-unknown-linux-musl/release/trend \
-    ./main
+WORKDIR /usr/src/app
+COPY . .
 
-CMD ["/app/main"]
+RUN RUSTFLAGS="-Ctarget-feature=-crt-static" cargo build --release --bin trend
+
+FROM alpine:latest
+
+RUN apk add --no-cache \
+    openssl \
+    libgcc \
+    ca-certificates \
+    && update-ca-certificates
+
+COPY --from=builder /usr/src/app/target/release/trend /usr/local/bin/trend
+
+RUN chmod +x /usr/local/bin/trend
+
+CMD ["/usr/local/bin/trend"]

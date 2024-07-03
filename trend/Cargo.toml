@@ -7,8 +7,8 @@ edition = "2021"
 
 [dependencies]
 rss = "2.0"
-tokio = { version = "1", features = ["full"] }
-reqwest = { version = "0.12.5" }
+tokio = { version = "1.38.0", features = ["full"] }
+reqwest = { version = "0.12.5",features = ["rustls-tls"] }
 date = {path="../date"}
 user = {path="../user"}
 axum = { version = "0.7.5"  }
